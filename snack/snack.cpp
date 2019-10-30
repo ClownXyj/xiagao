@@ -125,10 +125,40 @@ void DrawSnack()
 	}
 }
 
+
+void UpdateScreen()
+{
+  DrawSnack();
+}
 void GameLoop()
 {
+	int key  =0;
+
     while (1)
 	{
+    // 处理键盘输入
+
+
+	//检测是否有按键输入
+		if (_kbhit())
+		{
+		  key = _getch();
+		}
+
+	//按q退出游戏
+        if (key == 'q' ||  key == 'Q')
+		{
+		  return;
+		}
+
+	
+	// 处理撞墙事件
+
+
+	//更新画面
+		UpdateScreen();
+
+
 	//延时
 	Sleep(100);
 	

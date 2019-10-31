@@ -42,6 +42,8 @@ typedef struct Snack
 // 蛇
 Snack g_snack;
 
+int g_score;
+
 // 食物坐标
 Position g_food;
 
@@ -125,11 +127,83 @@ void DrawSnack()
 	}
 }
 
+void SnackMove(int key)
+{
+	int i;
+	int delta_x = 0;
+	int delta_y = 0;
+
+	// 因为蛇移动时，最后一个节点必须清空，否则会有残影
+	DrawChar(g_snack.pos[g_snack.size -1].x, g_snack.pos[g_snack.size -1].y, ' ');
+
+	// 2  1  0
+	//    2  1  0
+	for (i = g_snack.size - 1; i > 0; i--)
+	{
+		g_snack.pos[i].x = g_snack.pos[i - 1].x;
+		g_snack.pos[i].y = g_snack.pos[i - 1].y;
+	}
+
+	// 有效按键则更新方向
+
+
+	switch (key)
+	{
+	case 'W':
+	case 'w':
+		delta_x = 0;
+		delta_y = -1;
+		break;
+	case 'a':
+	case 'A':
+		delta_x = -1;
+		delta_y = 0;
+		break;
+	case 'd':
+	case 'D':
+		delta_x = 1;
+		delta_y = 0;
+		break;
+	case 's':
+	case 'S':
+		delta_x = 0;
+		delta_y = 1;
+		break;
+	default:
+		delta_x = 0;
+		delta_y = 0;
+		break;
+	}
+	g_snack.pos[0].x += delta_x;
+	g_snack.pos[0].y += delta_y;
+}
+
+
 
 void UpdateScreen()
 {
   DrawSnack();
 }
+
+
+// 吃食物
+void EatFood()
+{
+	
+	if (g_snack.pos[0].x == g_food.x && 
+		g_snack.pos[0].y == g_food.y)
+	{
+	    InitFood();
+    	g_snack.size++;
+		// 新的尾节点跟食物的坐标一致
+		g_snack.pos[g_snack.size].x = g_food.x;
+		g_snack.pos[g_snack.size].y = g_food.y;
+
+	    
+	
+	}
+}
+
 void GameLoop()
 {
 	int key  =0;
@@ -150,8 +224,8 @@ void GameLoop()
 		{
 		  return;
 		}
-
-	
+    EatFood();
+	SnackMove(key);
 	// 处理撞墙事件
 
 
@@ -180,10 +254,13 @@ void Init()
 	// 初始化，画地图
 	InitMap();
 	InitSnack();
+
 	DrawSnack();
    //初始化食物
 	InitFood();
+   
 	DrawFood();
+	
 }
 
 
@@ -197,6 +274,7 @@ int main(int argc, char* argv[])
 {
     Init();    
 	// 游戏的主循环，按键处理，游戏画面刷新，处理撞墙等事件
+ 
 	GameLoop();
      
 	//打印得分

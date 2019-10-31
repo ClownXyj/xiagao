@@ -1,6 +1,5 @@
-// snack.cpp : Defines the entry point for the console application.
+// T.cpp : 定义控制台应用程序的入口点。
 //
-
 #include "stdafx.h"
 #include<stdio.h>
 #include<string.h>
@@ -9,17 +8,18 @@
 #include<time.h>
 #include<Windows.h>
 #include<conio.h>
-// 游戏功能列表
-//1.贪吃蛇上下左右移动
-//2.贪吃蛇吃食物长大
-//3.贪吃蛇撞墙，吃到自己，gg
-//4.游戏结束，打印得分
 
-
-//定义地图的大小
 #define MAP_WIDTH 60
-#define MAP_HEIGHT 20  
+#define MAP_HEIGHT 20
 
+typedef enum KEY {
+	KEY_LEFT,
+	KEY_RIGHT,
+	KEY_UP,
+	KEY_DOWN,
+	KEY_QUIT,
+	KEY_UNKNOWN
+} KEY;
 
 
 typedef struct Position
@@ -42,21 +42,16 @@ typedef struct Snack
 // 蛇
 Snack g_snack;
 
-int g_score;
-
 // 食物坐标
 Position g_food;
 
-void DrawChar(int x, int y, char c)
-{
-	COORD coord;
+// 默认移动方向
+KEY g_key = KEY_LEFT;
 
-	coord.X = x;
-	coord.Y = y;
-	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
-	putchar(c);
-}
+int g_score;
 
+// 只绘制右边和底边边框
+// 
 void InitMap()
 {
 	int i;
@@ -69,7 +64,7 @@ void InitMap()
 		{
 			if (j == MAP_WIDTH)
 			{
-				printf("|\n");
+				printf("|");
 			}
 			else if (i == MAP_HEIGHT)
 			{
@@ -80,14 +75,40 @@ void InitMap()
 				printf(" ");
 			}
 		}
+		printf("\n");
 	}
+
+	printf("w:上 a:左 s:下 d:右\n");
+		printf("made be 瞎搞 \n");
 }
 
-void InitFood()
+void DrawChar(int x, int y, char c)
+{								
+	COORD coord;
+
+	coord.X = x;
+	coord.Y = y;
+	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
+	putchar(c);
+}
+
+// 绘制蛇身
+void DrawSnack()
 {
-	srand((unsigned int)time(NULL));
-	g_food.x = rand() % MAP_WIDTH;
-	g_food.y = rand() % MAP_HEIGHT;
+	int i;
+
+	for (i = 0; i < g_snack.size; i++)
+	{
+		// head
+		if (i == 0)
+		{
+			DrawChar(g_snack.pos[i].x, g_snack.pos[i].y, '*');
+		}
+		else
+		{
+			DrawChar(g_snack.pos[i].x, g_snack.pos[i].y, '#');
+		}
+	}
 }
 
 // 绘制食物
@@ -107,27 +128,50 @@ void InitSnack()
 	g_snack.pos[1].y = MAP_HEIGHT / 2;
 }
 
-
-
-void DrawSnack()
+void InitFood()
 {
-	int i;
+	srand((unsigned int)time(NULL));
+	g_food.x = rand() % MAP_WIDTH;
+	g_food.y = rand() % MAP_HEIGHT;
+}
 
-	for (i = 0; i < g_snack.size; i++)
+//去掉控制台光标
+void InitEnv()
+{
+	//去掉控制台光标
+	CONSOLE_CURSOR_INFO cci;
+	cci.bVisible = FALSE;
+	cci.dwSize = sizeof(cci);
+	SetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &cci);
+}
+
+
+KEY GetKey(int key)
+{
+	switch (key)
 	{
-		// head
-		if (i == 0)
-		{
-			DrawChar(g_snack.pos[i].x, g_snack.pos[i].y, '*');
-		}
-		else
-		{
-			DrawChar(g_snack.pos[i].x, g_snack.pos[i].y, '#');
-		}
+	case 'W':
+	case 'w':
+		return KEY_UP;
+	case 'a':
+	case 'A':
+		return KEY_LEFT;
+	case 's':
+	case 'S':
+		return KEY_DOWN;
+	case 'd':
+	case 'D':
+		return KEY_RIGHT;
+	case 'q':
+	case 'Q':
+		return KEY_QUIT;
+	default:
+		return KEY_UNKNOWN;
 	}
 }
 
-void SnackMove(int key)
+
+void SnackMove(KEY key)
 {
 	int i;
 	int delta_x = 0;
@@ -145,27 +189,26 @@ void SnackMove(int key)
 	}
 
 	// 有效按键则更新方向
-
-
-	switch (key)
+	if (key != KEY_UNKNOWN && key != KEY_QUIT)
 	{
-	case 'W':
-	case 'w':
+		g_key = key;
+	}
+
+	switch (g_key)
+	{
+	case KEY_UP:
 		delta_x = 0;
 		delta_y = -1;
 		break;
-	case 'a':
-	case 'A':
+	case KEY_LEFT:
 		delta_x = -1;
 		delta_y = 0;
 		break;
-	case 'd':
-	case 'D':
+	case KEY_RIGHT:
 		delta_x = 1;
 		delta_y = 0;
 		break;
-	case 's':
-	case 'S':
+	case KEY_DOWN:
 		delta_x = 0;
 		delta_y = 1;
 		break;
@@ -178,107 +221,115 @@ void SnackMove(int key)
 	g_snack.pos[0].y += delta_y;
 }
 
-
-
-void UpdateScreen()
+// 撞墙
+int HitWall()
 {
-  DrawSnack();
+	// 头出界
+	if (g_snack.pos[0].x < 0 ||
+		g_snack.pos[0].x > MAP_WIDTH ||
+		g_snack.pos[0].y < 0 ||
+		g_snack.pos[0].y > MAP_HEIGHT)
+	{
+		return -1;
+	}
+
+	return 0;
 }
 
+// 吃自己
+int HitSelf()
+{
+	// 头碰到身体其他部分
+	int i;
+
+	for (i = 1; i < g_snack.size; i++)
+	{
+		if (g_snack.pos[0].x == g_snack.pos[i].x &&
+			g_snack.pos[0].y == g_snack.pos[i].y)
+		{
+			return -1;
+		}
+	}
+
+	return 0;
+}
 
 // 吃食物
 void EatFood()
 {
-	
+
 	if (g_snack.pos[0].x == g_food.x && 
 		g_snack.pos[0].y == g_food.y)
 	{
-	    InitFood();
-    	g_snack.size++;
-		// 新的尾节点跟食物的坐标一致
-		g_snack.pos[g_snack.size].x = g_food.x;
-		g_snack.pos[g_snack.size].y = g_food.y;
+		InitFood();
 
-	    
-	
+		// 新的节点跟最后一个节点重合
+		g_snack.pos[g_snack.size].x = g_snack.pos[g_snack.size - 1].x;
+		g_snack.pos[g_snack.size].y = g_snack.pos[g_snack.size - 1].y;
+		g_snack.size++;
+
+		g_score += 250;
 	}
 }
 
 void GameLoop()
 {
-	int key  =0;
+	KEY key = KEY_UNKNOWN;
 
-    while (1)
+	while (1)
 	{
-    // 处理键盘输入
-
-
-	//检测是否有按键输入
+		// 检测按键
 		if (_kbhit())
 		{
-		  key = _getch();
+			key = GetKey(_getch());
 		}
 
-	//按q退出游戏
-        if (key == 'q' ||  key == 'Q')
+		// 移动蛇
+		SnackMove(key);
+
+		// 退出游戏
+		if (key == KEY_QUIT)
 		{
-		  return;
+			return;
 		}
-    EatFood();
-	SnackMove(key);
-	// 处理撞墙事件
+		
+		if (HitWall() || HitSelf())
+		{
+			// game over
+			return;
+		}
 
+		EatFood();
 
-	//更新画面
-		UpdateScreen();
+		// 绘制蛇
+		DrawSnack();
 
+		DrawFood();
 
-	//延时
-	Sleep(100);
-	
+		// 延时
+		Sleep(20);
 	}
-
 }
 
 void Score()
 {
-
+	system("cls");
+	printf("游戏结束\n分数：%d\n", g_score);
 }
-
-
-
-
-void Init()
-{
-
-	// 初始化，画地图
-	InitMap();
-	InitSnack();
-
-	DrawSnack();
-   //初始化食物
-	InitFood();
-   
-	DrawFood();
-	
-}
-
-
-
-
-
-
-
 
 int main(int argc, char* argv[])
 {
-    Init();    
-	// 游戏的主循环，按键处理，游戏画面刷新，处理撞墙等事件
- 
+	InitEnv();
+
+	InitMap();
+
+	InitSnack();
+
+	InitFood();
+
 	GameLoop();
-     
-	//打印得分
+
 	Score();
+
 	return 0;
 }
-
